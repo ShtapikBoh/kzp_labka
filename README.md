@@ -43,8 +43,14 @@ subject:String; teacher:String; day:String; room:int; durationMin:int
 - `LessonKind` — enum `LECTURE`/`PRACTICE`; вид визначається за тривалістю:
   від 90 хв — лекція, менше — практика (формат CSV не змінився).
 - `RoomDuration` — `record` (аудиторія + тривалість).
-- `Main` — аргументи, читання файлу, збір показників зі списку `List<Lesson>`,
-  звіт. Показники рахуються через спільний тип, без `if` за підтипом.
+- `LessonQueries` — запити Stream API до списку занять (вхідний список не
+  змінюється): `filterByDay` (filter), `subjectNames` (map), `countByTeacher`
+  (groupingBy), `durationStatistics` (summarizingInt), `topLessons`
+  (sorted + limit, компаратор: тривалість спадаючи, потім предмет),
+  `findByRoom` (повертає `Optional`), а також `totalResources`, `minRoom`,
+  `longestLesson`, `countByKind`.
+- `Main` — аргументи, читання файлу, розбір рядків і звіт. Показники
+  звіту рахуються через `LessonQueries` без циклів і без `if` за підтипом.
 
 Правила валідації `Lesson`: предмет, викладач і день не порожні; `room` і
 `durationMin` більші за 0.
@@ -63,10 +69,10 @@ subject:String; teacher:String; day:String; room:int; durationMin:int
 
 ```
 ./mvnw verify          # Windows: mvnw.cmd verify
-java -jar target/lab01-1.1.0.jar
-java -jar target/lab01-1.1.0.jar --input data/input.csv --output out/report.txt
-java -jar target/lab01-1.1.0.jar --help
-java -jar target/lab01-1.1.0.jar --version
+java -jar target/lab01-1.2.0.jar
+java -jar target/lab01-1.2.0.jar --input data/input.csv --output out/report.txt
+java -jar target/lab01-1.2.0.jar --help
+java -jar target/lab01-1.2.0.jar --version
 ```
 
 ## Приклад виводу
