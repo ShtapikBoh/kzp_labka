@@ -49,6 +49,17 @@ subject:String; teacher:String; day:String; room:int; durationMin:int
   (sorted + limit, компаратор: тривалість спадаючи, потім предмет),
   `findByRoom` (повертає `Optional`), а також `totalResources`, `minRoom`,
   `longestLesson`, `countByKind`.
+- `Repository<T>` — типобезпечне сховище: `add`, `all()` (незмінний знімок),
+  `find(Predicate<? super T>)`.
+- `@CsvColumn` — анотація (`RUNTIME`, `FIELD`) з назвою CSV-стовпця.
+- `LessonRecord` — плоский запис для експорту: предмет, викладач, день, пара,
+  аудиторія. Має власну перевірку та `fromFields`.
+- `CsvExporter` — універсальний рефлексивний експортер: шукає поля з `@CsvColumn`,
+  сортує їх за Java-іменем, екранує коми, лапки й переноси рядків. Назв
+  предметних класів не знає.
+- `CsvParser` — документний CSV-парсер (машина станів), `CsvImporter` читає
+  файл у UTF-8, перевіряє заголовок і відновлює об'єкти.
+- `DataStorageException` — власний перевірений виняток із причиною (`cause`).
 - `Main` — аргументи, читання файлу, розбір рядків і звіт. Показники
   звіту рахуються через `LessonQueries` без циклів і без `if` за підтипом.
 
@@ -69,10 +80,11 @@ subject:String; teacher:String; day:String; room:int; durationMin:int
 
 ```
 ./mvnw verify          # Windows: mvnw.cmd verify
-java -jar target/lab01-1.2.0.jar
-java -jar target/lab01-1.2.0.jar --input data/input.csv --output out/report.txt
-java -jar target/lab01-1.2.0.jar --help
-java -jar target/lab01-1.2.0.jar --version
+java -jar target/lab01-1.3.0.jar
+java -jar target/lab01-1.3.0.jar --input data/input.csv --output out/report.txt
+java -jar target/lab01-1.3.0.jar --export out/lessons.csv
+java -jar target/lab01-1.3.0.jar --help
+java -jar target/lab01-1.3.0.jar --version
 ```
 
 ## Приклад виводу
@@ -91,3 +103,21 @@ java -jar target/lab01-1.2.0.jar --version
 Рядок 6: від'ємне числове значення
 Рядок 7: очікується 5 полів, отримано 4
 ```
+
+## Експорт у CSV і round-trip
+
+`--export <файл.csv>` записує заняття через `Repository<LessonRecord>` і
+`CsvExporter`, читає файл назад і порівнює початкові та відновлені записи.
+Номер пари — це порядковий номер заняття в цей день за порядком у вхідному файлі.
+
+```
+день,пара,аудиторія,предмет,викладач
+Понеділок,1,101,Програмування,Олексів М. В.
+Вівторок,1,215,Кросплатформні засоби,Рудик Ю. І.
+Середа,1,98,Бази даних,Коваленко О. П.
+```
+
+Порядок стовпців — за алфавітом Java-імен полів (`day`, `period`, `room`,
+`subject`, `teacher`); назви стовпців беруться з `@CsvColumn`. Файл — UTF-8.
+Поле з комою, лапкою або переносом рядка береться в лапки, лапки подвоюються.
+Помилки (формат, значення, файл, рефлексія) завершуються `DataStorageException`.
