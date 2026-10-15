@@ -5,14 +5,13 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.EnumMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
 /** Консольна програма «Розклад занять»: читає записи, перевіряє їх і формує звіт. */
 public final class Main {
-    private static final String VERSION = "1.1.0";
+    private static final String VERSION = "1.2.0";
 
     /* Забороняє створення екземплярів службового класу. */
     private Main() {
@@ -73,56 +72,36 @@ public final class Main {
     static String buildReport(List<String> lines) {
         List<String> errors = new ArrayList<>();
         List<Lesson> lessons = new ArrayList<>();
-        int validCount = 0;
-        long totalMinutes = 0;
-        int minRoom = Integer.MAX_VALUE;
-        int longestMinutes = -1;
-        String longestSubject = "";
 
         for (int index = 0; index < lines.size(); index++) {
             try {
-                Lesson lesson = Lesson.fromCsv(lines.get(index));
-                lessons.add(lesson);
-                RoomDuration roomDuration = lesson.roomDuration();
-                validCount++;
-                totalMinutes += roomDuration.durationMin();
-                minRoom = Math.min(minRoom, roomDuration.room());
-                if (roomDuration.durationMin() > longestMinutes) {
-                    longestMinutes = roomDuration.durationMin();
-                    longestSubject = lesson.getSubject();
-                }
+                lessons.add(Lesson.fromCsv(lines.get(index)));
             } catch (IllegalArgumentException exception) {
                 errors.add("Рядок %d: %s".formatted(index + 1, exception.getMessage()));
             }
         }
 
-        int totalResources = 0;
-        Map<LessonKind, Integer> countByKind = new EnumMap<>(LessonKind.class);
-        for (Lesson lesson : lessons) {
-            totalResources += lesson.requiredResources();
-            countByKind.merge(lesson.kind(), 1, Integer::sum);
-        }
+        long totalMinutes = LessonQueries.durationStatistics(lessons).getSum();
+        Map<LessonKind, Long> countByKind = LessonQueries.countByKind(lessons);
 
         StringBuilder sb = new StringBuilder();
-        sb.append(String.format(Locale.ROOT, "Коректних записів: %d%n", validCount));
+        sb.append(String.format(Locale.ROOT, "Коректних записів: %d%n", lessons.size()));
         sb.append(String.format(Locale.ROOT, "Сумарна тривалість: %d хв (%.2f год)%n",
                 totalMinutes, totalMinutes / 60.0));
-        if (validCount == 0) {
-            sb.append(String.format(Locale.ROOT, "Найменший номер аудиторії: немає даних%n"));
-            sb.append(String.format(Locale.ROOT, "Найдовше заняття: немає даних%n"));
-        } else {
-            sb.append(String.format(Locale.ROOT, "Найменший номер аудиторії: %d%n", minRoom));
-            sb.append(String.format(Locale.ROOT, "Найдовше заняття: %s (%d хв)%n",
-                    longestSubject, longestMinutes));
-        }
-        sb.append(String.format(Locale.ROOT, "Сумарна потреба в ресурсах: %d%n", totalResources));
+        sb.append(LessonQueries.minRoom(lessons)
+                .map(room -> String.format(Locale.ROOT, "Найменший номер аудиторії: %d%n", room))
+                .orElse(String.format(Locale.ROOT, "Найменший номер аудиторії: немає даних%n")));
+        sb.append(LessonQueries.longestLesson(lessons)
+                .map(lesson -> String.format(Locale.ROOT, "Найдовше заняття: %s (%d хв)%n",
+                        lesson.getSubject(), lesson.getDurationMin()))
+                .orElse(String.format(Locale.ROOT, "Найдовше заняття: немає даних%n")));
+        sb.append(String.format(Locale.ROOT, "Сумарна потреба в ресурсах: %d%n",
+                LessonQueries.totalResources(lessons)));
         for (LessonKind kind : LessonKind.values()) {
-            sb.append(String.format(Locale.ROOT, "%s: %d%n", kind.getLabel(), countByKind.getOrDefault(kind, 0)));
+            sb.append(String.format(Locale.ROOT, "%s: %d%n", kind.getLabel(), countByKind.get(kind)));
         }
         sb.append(String.format(Locale.ROOT, "Помилок: %d%n", errors.size()));
-        for (String error : errors) {
-            sb.append(error).append(System.lineSeparator());
-        }
+        errors.forEach(error -> sb.append(error).append(System.lineSeparator()));
         return sb.toString();
     }
 }
