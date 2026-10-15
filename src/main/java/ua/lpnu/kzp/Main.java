@@ -5,12 +5,14 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 /** Консольна програма «Розклад занять»: читає записи, перевіряє їх і формує звіт. */
 public final class Main {
-    private static final String VERSION = "1.0.1";
+    private static final String VERSION = "1.1.0";
 
     /* Забороняє створення екземплярів службового класу. */
     private Main() {
@@ -70,6 +72,7 @@ public final class Main {
      */
     static String buildReport(List<String> lines) {
         List<String> errors = new ArrayList<>();
+        List<Lesson> lessons = new ArrayList<>();
         int validCount = 0;
         long totalMinutes = 0;
         int minRoom = Integer.MAX_VALUE;
@@ -79,6 +82,7 @@ public final class Main {
         for (int index = 0; index < lines.size(); index++) {
             try {
                 Lesson lesson = Lesson.fromCsv(lines.get(index));
+                lessons.add(lesson);
                 RoomDuration roomDuration = lesson.roomDuration();
                 validCount++;
                 totalMinutes += roomDuration.durationMin();
@@ -92,6 +96,13 @@ public final class Main {
             }
         }
 
+        int totalResources = 0;
+        Map<LessonKind, Integer> countByKind = new EnumMap<>(LessonKind.class);
+        for (Lesson lesson : lessons) {
+            totalResources += lesson.requiredResources();
+            countByKind.merge(lesson.kind(), 1, Integer::sum);
+        }
+
         StringBuilder sb = new StringBuilder();
         sb.append(String.format(Locale.ROOT, "Коректних записів: %d%n", validCount));
         sb.append(String.format(Locale.ROOT, "Сумарна тривалість: %d хв (%.2f год)%n",
@@ -103,6 +114,10 @@ public final class Main {
             sb.append(String.format(Locale.ROOT, "Найменший номер аудиторії: %d%n", minRoom));
             sb.append(String.format(Locale.ROOT, "Найдовше заняття: %s (%d хв)%n",
                     longestSubject, longestMinutes));
+        }
+        sb.append(String.format(Locale.ROOT, "Сумарна потреба в ресурсах: %d%n", totalResources));
+        for (LessonKind kind : LessonKind.values()) {
+            sb.append(String.format(Locale.ROOT, "%s: %d%n", kind.getLabel(), countByKind.getOrDefault(kind, 0)));
         }
         sb.append(String.format(Locale.ROOT, "Помилок: %d%n", errors.size()));
         for (String error : errors) {

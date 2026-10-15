@@ -33,13 +33,21 @@ subject:String; teacher:String; day:String; room:int; durationMin:int
 
 ## Структура коду
 
-- `Lesson` — незмінна сутність (`private final` поля, лише геттери). Конструктор
-  перевіряє інваріанти, `Lesson.fromCsv(String)` розбирає один рядок CSV.
-- `RoomDuration` — `record` (аудиторія + тривалість), який віддає `Lesson.roomDuration()`.
-- `Main` — аргументи, читання файлу, збір показників зі списку занять, звіт.
+- `Lesson` — абстрактний запечатаний (`sealed`) базовий клас із спільними
+  полями та перевіркою інваріантів у конструкторі; `Lesson.fromCsv` розбирає
+  рядок CSV, `Lesson.of` створює потрібний підтип. Поліморфні методи:
+  `kind()` і `requiredResources()`. `equals`/`hashCode` враховують підтип і
+  всі п'ять полів.
+- `Lecture` — лекція: потребує 1 ресурс на академічну годину (45 хв).
+- `Practice` — практика: 2 ресурси на академічну годину + 1 на підготовку.
+- `LessonKind` — enum `LECTURE`/`PRACTICE`; вид визначається за тривалістю:
+  від 90 хв — лекція, менше — практика (формат CSV не змінився).
+- `RoomDuration` — `record` (аудиторія + тривалість).
+- `Main` — аргументи, читання файлу, збір показників зі списку `List<Lesson>`,
+  звіт. Показники рахуються через спільний тип, без `if` за підтипом.
 
 Правила валідації `Lesson`: предмет, викладач і день не порожні; `room` і
-`durationMin` більші за 0. Формат CSV і вигляд звіту не змінилися.
+`durationMin` більші за 0.
 
 ## Показники звіту
 
@@ -47,6 +55,7 @@ subject:String; teacher:String; day:String; room:int; durationMin:int
 2. Сумарна тривалість (хв і год)
 3. Найменший номер аудиторії
 4. Найдовше заняття
+5. Сумарна потреба в ресурсах та кількість лекцій і практик
 
 ## Запуск
 
@@ -54,10 +63,10 @@ subject:String; teacher:String; day:String; room:int; durationMin:int
 
 ```
 ./mvnw verify          # Windows: mvnw.cmd verify
-java -jar target/lab01-1.0.1.jar
-java -jar target/lab01-1.0.1.jar --input data/input.csv --output out/report.txt
-java -jar target/lab01-1.0.1.jar --help
-java -jar target/lab01-1.0.1.jar --version
+java -jar target/lab01-1.1.0.jar
+java -jar target/lab01-1.1.0.jar --input data/input.csv --output out/report.txt
+java -jar target/lab01-1.1.0.jar --help
+java -jar target/lab01-1.1.0.jar --version
 ```
 
 ## Приклад виводу
@@ -67,6 +76,9 @@ java -jar target/lab01-1.0.1.jar --version
 Сумарна тривалість: 290 хв (4.83 год)
 Найменший номер аудиторії: 98
 Найдовше заняття: Кросплатформні засоби (120 хв)
+Сумарна потреба в ресурсах: 10
+Лекція: 2
+Практика: 1
 Помилок: 4
 Рядок 4: порожній предмет, викладач або день
 Рядок 5: числове поле має помилковий формат

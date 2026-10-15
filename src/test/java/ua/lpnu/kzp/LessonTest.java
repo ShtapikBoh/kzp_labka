@@ -9,7 +9,7 @@ class LessonTest {
 
     @Test
     void constructorStoresValidValues() {
-        Lesson lesson = new Lesson(" Бази даних ", "Коваленко О. П.", "Середа", 98, 80);
+        Lesson lesson = Lesson.of(" Бази даних ", "Коваленко О. П.", "Середа", 98, 80);
         assertEquals("Бази даних", lesson.getSubject());
         assertEquals("Коваленко О. П.", lesson.getTeacher());
         assertEquals("Середа", lesson.getDay());
@@ -19,7 +19,7 @@ class LessonTest {
 
     @Test
     void constructorAcceptsBoundaryValueOne() {
-        Lesson lesson = new Lesson("Фізика", "Бойко А. А.", "Вівторок", 1, 1);
+        Lesson lesson = Lesson.of("Фізика", "Бойко А. А.", "Вівторок", 1, 1);
         assertEquals(1, lesson.getRoom());
         assertEquals(1, lesson.getDurationMin());
     }
@@ -27,23 +27,23 @@ class LessonTest {
     @Test
     void constructorRejectsBlankAndNullText() {
         assertThrows(IllegalArgumentException.class,
-                () -> new Lesson("", "Бойко А. А.", "Вівторок", 10, 60));
+                () -> Lesson.of("", "Бойко А. А.", "Вівторок", 10, 60));
         assertThrows(IllegalArgumentException.class,
-                () -> new Lesson("Фізика", "  ", "Вівторок", 10, 60));
+                () -> Lesson.of("Фізика", "  ", "Вівторок", 10, 60));
         assertThrows(IllegalArgumentException.class,
-                () -> new Lesson("Фізика", "Бойко А. А.", null, 10, 60));
+                () -> Lesson.of("Фізика", "Бойко А. А.", null, 10, 60));
     }
 
     @Test
     void constructorRejectsNonPositiveNumbers() {
         assertThrows(IllegalArgumentException.class,
-                () -> new Lesson("Фізика", "Бойко А. А.", "Вівторок", -1, 60));
+                () -> Lesson.of("Фізика", "Бойко А. А.", "Вівторок", -1, 60));
         assertThrows(IllegalArgumentException.class,
-                () -> new Lesson("Фізика", "Бойко А. А.", "Вівторок", 10, -5));
+                () -> Lesson.of("Фізика", "Бойко А. А.", "Вівторок", 10, -5));
         assertThrows(IllegalArgumentException.class,
-                () -> new Lesson("Фізика", "Бойко А. А.", "Вівторок", 0, 60));
+                () -> Lesson.of("Фізика", "Бойко А. А.", "Вівторок", 0, 60));
         assertThrows(IllegalArgumentException.class,
-                () -> new Lesson("Фізика", "Бойко А. А.", "Вівторок", 10, 0));
+                () -> Lesson.of("Фізика", "Бойко А. А.", "Вівторок", 10, 0));
     }
 
     @Test
@@ -65,13 +65,13 @@ class LessonTest {
 
     @Test
     void roomDurationExposesRoomAndDuration() {
-        RoomDuration value = new Lesson("Фізика", "Бойко А. А.", "Вівторок", 120, 60).roomDuration();
+        RoomDuration value = Lesson.of("Фізика", "Бойко А. А.", "Вівторок", 120, 60).roomDuration();
         assertEquals(new RoomDuration(120, 60), value);
     }
 
     @Test
     void toStringUsesRootLocaleForDecimals() {
-        Lesson lesson = new Lesson("Фізика", "Бойко А. А.", "Вівторок", 120, 90);
+        Lesson lesson = Lesson.of("Фізика", "Бойко А. А.", "Вівторок", 120, 90);
         assertEquals("Фізика (Бойко А. А., Вівторок, ауд. 120, 90 хв, 1.50 год)", lesson.toString());
     }
 
