@@ -11,7 +11,7 @@ import java.util.Map;
 
 /** Консольна програма «Розклад занять»: читає записи, перевіряє їх і формує звіт. */
 public final class Main {
-    private static final String VERSION = "1.2.0";
+    private static final String VERSION = "1.3.0";
 
     /* Забороняє створення екземплярів службового класу. */
     private Main() {
@@ -25,11 +25,12 @@ public final class Main {
     public static void main(String[] args) {
         String inputPath = "data/input.csv";
         String outputPath = "out/report.txt";
+        String exportPath = null;
 
         for (int i = 0; i < args.length; i++) {
             if ("--help".equals(args[i])) {
                 System.out.printf(Locale.ROOT,
-                        "Використання: java -jar lab01.jar [--help] [--version] [--input <файл>] [--output <файл>]%n");
+                        "Використання: java -jar lab01.jar [--help] [--version] [--input <файл>] [--output <файл>] [--export <файл.csv>]%n");
                 return;
             }
             if ("--version".equals(args[i])) {
@@ -40,6 +41,8 @@ public final class Main {
                 inputPath = args[++i];
             } else if ("--output".equals(args[i]) && i + 1 < args.length) {
                 outputPath = args[++i];
+            } else if ("--export".equals(args[i]) && i + 1 < args.length) {
+                exportPath = args[++i];
             }
         }
 
@@ -54,9 +57,64 @@ public final class Main {
                 Files.createDirectories(parent);
             }
             Files.writeString(output, report, StandardCharsets.UTF_8);
+
+            if (exportPath != null) {
+                Path csv = Path.of(exportPath);
+                Path csvParent = csv.getParent();
+                if (csvParent != null) {
+                    Files.createDirectories(csvParent);
+                }
+                System.out.println(exportRoundTrip(lines, csv));
+            }
         } catch (IOException exception) {
             System.out.printf(Locale.ROOT, "Помилка читання/запису файлу: %s%n", exception.getMessage());
+        } catch (DataStorageException exception) {
+            System.out.printf(Locale.ROOT, "Помилка експорту CSV: %s%n", exception.getMessage());
+            if (exception.getCause() != null) {
+                System.out.printf(Locale.ROOT, "Причина: %s%n", exception.getCause());
+            }
         }
+    }
+
+    /**
+     * Експортує заняття у CSV через {@link Repository} і {@link CsvExporter}, читає файл назад
+     * та порівнює початкові й відновлені записи.
+     *
+     * @param lines рядки вхідного файлу розкладу
+     * @param csvPath шлях до CSV
+     * @return повідомлення про результат round-trip
+     * @throws DataStorageException якщо запис, читання або розбір не вдалися, або записи не збігаються
+     */
+    static String exportRoundTrip(List<String> lines, Path csvPath) throws DataStorageException {
+        Repository<LessonRecord> repository = new Repository<>();
+        LessonRecord.fromLessons(parseLessons(lines, new ArrayList<>())).forEach(repository::add);
+
+        CsvExporter.write(csvPath, LessonRecord.class, repository.all());
+        List<LessonRecord> restored = CsvImporter.read(csvPath, LessonRecord.class, LessonRecord::fromFields);
+        if (!repository.all().equals(restored)) {
+            throw new DataStorageException("Round-trip не збігається: записано %d, відновлено %d"
+                    .formatted(repository.all().size(), restored.size()));
+        }
+        return "CSV: %s, записів: %d, round-trip: збігається".formatted(csvPath, restored.size());
+    }
+
+    /**
+     * Розбирає рядки розкладу; хибні рядки додає до списку помилок з номером і причиною.
+     *
+     * @param lines рядки вхідного файлу
+     * @param errors список, до якого додаються повідомлення про помилки
+     * @return коректні заняття в порядку файла
+     */
+    static List<Lesson> parseLessons(List<String> lines, List<String> errors) {
+        List<Lesson> lessons = new ArrayList<>();
+        for (int index = 0; index < lines.size(); index++) {
+            try {
+                lessons.add(Lesson.fromCsv(lines.get(index)));
+            } catch (IllegalArgumentException exception) {
+                errors.add("Рядок %d: %s".formatted(index + 1, exception.getMessage()));
+            }
+        }
+        return lessons;
     }
 
     /**
@@ -71,15 +129,7 @@ public final class Main {
      */
     static String buildReport(List<String> lines) {
         List<String> errors = new ArrayList<>();
-        List<Lesson> lessons = new ArrayList<>();
-
-        for (int index = 0; index < lines.size(); index++) {
-            try {
-                lessons.add(Lesson.fromCsv(lines.get(index)));
-            } catch (IllegalArgumentException exception) {
-                errors.add("Рядок %d: %s".formatted(index + 1, exception.getMessage()));
-            }
-        }
+        List<Lesson> lessons = parseLessons(lines, errors);
 
         long totalMinutes = LessonQueries.durationStatistics(lessons).getSum();
         Map<LessonKind, Long> countByKind = LessonQueries.countByKind(lessons);
