@@ -10,8 +10,7 @@ import java.util.Locale;
 
 /** Консольна програма «Розклад занять»: читає записи, перевіряє їх і формує звіт. */
 public final class Main {
-    private static final String VERSION = "1.0.0";
-    private static final int FIELD_COUNT = 5;
+    private static final String VERSION = "1.0.1";
 
     /* Забороняє створення екземплярів службового класу. */
     private Main() {
@@ -62,8 +61,9 @@ public final class Main {
     /**
      * Обробляє рядки розкладу та формує текст звіту.
      *
-     * <p>Формат рядка: {@code subject;teacher;day;room;durationMin}. Хибні рядки
-     * пропускаються з повідомленням про номер рядка та причину.
+     * <p>Формат рядка: {@code subject;teacher;day;room;durationMin}. Розбір і перевірка
+     * виконуються в {@link Lesson#fromCsv(String)}. Хибні рядки пропускаються
+     * з повідомленням про номер рядка та причину.
      *
      * @param lines рядки вхідного файлу
      * @return готовий текст звіту
@@ -77,49 +77,18 @@ public final class Main {
         String longestSubject = "";
 
         for (int index = 0; index < lines.size(); index++) {
-            int lineNumber = index + 1;
-            String line = lines.get(index);
-
-            if (line.isBlank()) {
-                errors.add("Рядок %d: порожній рядок".formatted(lineNumber));
-                continue;
-            }
-
-            String[] fields = line.split(";", -1);
-            if (fields.length != FIELD_COUNT) {
-                errors.add("Рядок %d: очікується %d полів, отримано %d"
-                        .formatted(lineNumber, FIELD_COUNT, fields.length));
-                continue;
-            }
-
-            String subject = fields[0].trim();
-            String teacher = fields[1].trim();
-            String day = fields[2].trim();
-            if (subject.isEmpty() || teacher.isEmpty() || day.isEmpty()) {
-                errors.add("Рядок %d: порожній предмет, викладач або день".formatted(lineNumber));
-                continue;
-            }
-
-            int room;
-            int duration;
             try {
-                room = Integer.parseInt(fields[3].trim());
-                duration = Integer.parseInt(fields[4].trim());
-            } catch (NumberFormatException exception) {
-                errors.add("Рядок %d: числове поле має помилковий формат".formatted(lineNumber));
-                continue;
-            }
-            if (room < 0 || duration < 0) {
-                errors.add("Рядок %d: від'ємне числове значення".formatted(lineNumber));
-                continue;
-            }
-
-            validCount++;
-            totalMinutes += duration;
-            minRoom = Math.min(minRoom, room);
-            if (duration > longestMinutes) {
-                longestMinutes = duration;
-                longestSubject = subject;
+                Lesson lesson = Lesson.fromCsv(lines.get(index));
+                RoomDuration roomDuration = lesson.roomDuration();
+                validCount++;
+                totalMinutes += roomDuration.durationMin();
+                minRoom = Math.min(minRoom, roomDuration.room());
+                if (roomDuration.durationMin() > longestMinutes) {
+                    longestMinutes = roomDuration.durationMin();
+                    longestSubject = lesson.getSubject();
+                }
+            } catch (IllegalArgumentException exception) {
+                errors.add("Рядок %d: %s".formatted(index + 1, exception.getMessage()));
             }
         }
 
