@@ -29,7 +29,17 @@ subject:String; teacher:String; day:String; room:int; durationMin:int
 - полів не 5;
 - предмет, викладач або день порожні;
 - `room` або `durationMin` не є цілим числом;
-- `room` або `durationMin` від'ємні.
+- `room` або `durationMin` від'ємні або дорівнюють 0.
+
+## Структура коду
+
+- `Lesson` — незмінна сутність (`private final` поля, лише геттери). Конструктор
+  перевіряє інваріанти, `Lesson.fromCsv(String)` розбирає один рядок CSV.
+- `RoomDuration` — `record` (аудиторія + тривалість), який віддає `Lesson.roomDuration()`.
+- `Main` — аргументи, читання файлу, збір показників зі списку занять, звіт.
+
+Правила валідації `Lesson`: предмет, викладач і день не порожні; `room` і
+`durationMin` більші за 0. Формат CSV і вигляд звіту не змінилися.
 
 ## Показники звіту
 
@@ -44,10 +54,10 @@ subject:String; teacher:String; day:String; room:int; durationMin:int
 
 ```
 ./mvnw verify          # Windows: mvnw.cmd verify
-java -jar target/lab01-1.0.0.jar
-java -jar target/lab01-1.0.0.jar --input data/input.csv --output out/report.txt
-java -jar target/lab01-1.0.0.jar --help
-java -jar target/lab01-1.0.0.jar --version
+java -jar target/lab01-1.0.1.jar
+java -jar target/lab01-1.0.1.jar --input data/input.csv --output out/report.txt
+java -jar target/lab01-1.0.1.jar --help
+java -jar target/lab01-1.0.1.jar --version
 ```
 
 ## Приклад виводу
